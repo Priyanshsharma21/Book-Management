@@ -6,7 +6,6 @@ dotenv.config()
 const { MONGODB_URL,PORT } = process.env
 
 
-
 const startServer = async()=>{
     try {
         mongoose.set('strictQuery', true)

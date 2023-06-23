@@ -12,7 +12,10 @@ const reviewSchema = new Schema({
     type: String,
     required: true,
     default: 'Guest',
-    value: 'reviewer\'s name'
+    value: {
+      type : String,
+      required: true,
+    }
   },
   reviewedAt: {
     type: Date,

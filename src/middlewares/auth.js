@@ -5,108 +5,79 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 import {
     isValid,
-    validString,
-    validateEmail,
-    isValidReqBody,
-    isValidPhoneNumber,
-    isValidPincode,
-    isValidPlace,
-    isValidISBN,
-    isValidPassword
-  } from '../utils/index.js'
-  import mongoose from 'mongoose'
+} from '../utils/index.js'
+import mongoose from 'mongoose'
 
-  const {isValidObjectId} = mongoose
+const {
+    isValidObjectId
+} = mongoose
 
-const { JWT_SECRET } = process.env
+const {
+    JWT_SECRET
+} = process.env
 
 
-export const isLoggesIn = async(req,res,next)=>{
+export const isLoggesIn = async (req, res, next) => {
     try {
         const token = req.headers['x-api-key'] || req.headers.authorization.split(" ")[1] || req.headers['auth-token']
 
-        if(!token) return res.status(400).json({status: false, message : "Token Not Found."})
+        if (!token) return res.status(400).json({
+            status: false,
+            message: "Token Not Found."
+        })
 
-        jwt.verify( token, JWT_SECRET, function ( err , decodedToken ) {
+        jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
             if (err) {
-
-                if (err.name === 'JsonWebTokenError') {
-                    return res.status(401).send({ status: false, message: "invalid token" });
-                }
-
-                if (err.name === 'TokenExpiredError') {
-                    return res.status(401).send({ status: false, message: "you are logged out, login again" });
-                } else {
-                    return res.send({ msg: err.message });
-                }
+                return res.status(401).json({
+                    msg: err.message
+                })
             } else {
-                req.token = decodedToken
+                req.decodedToken = decodedToken;
                 next()
             }
         });
 
     } catch (error) {
-        res.status(500).json({status : false, message : error.message, middleware : "Middleware Message"})
+        res.status(500).json({
+            status: false,
+            message: error.message,
+            middleware: "Middleware Message"
+        })
     }
 }
 
 
 
 
-
-
-
-export const isAuthorized = async ( req , res , next ) => {
+export const authorization = async function (req, res, next) {
     try {
-        const loggedUserId = req.token.userId
-
-        if (req.originalUrl === "/books") {
-            let userId = req.body.userId
-            
-            if (!isValid(userId)) {
-                return res.status(400).send({ status: false, message: "userId must be in string." });
-            }
-
-            if (!isValidObjectId(userId)) {
-                return res.status(400).send({ status: false, message: "Invalid user id" });
-            }
-
-            const userData = await User.findById(userId);
-
-            if (!userData) {
-                return res.status(404).send({ status: false, message: "The user id does not exist" });
-            }
-
-            if (loggedUserId != userId) {
-                return res.status(403).send({ status: false, message: "Not authorized,please provide your own user id for book creation" });
-            }
-
-            req.body.userId = userId
-        } else {
-            let bookId = req.params.bookId
-
-            if (!bookId) {
-                return res.status(400).send({ status: false, message: "book id is mandatory" });
-            }
-
-            if (!isValidObjectId(bookId)) {
-                return res.status(400).send({ status: false, message: "Invalid Book ID" });
-            }
-
-            let checkBookId = await Book.findById(bookId);
-
-            if (!checkBookId) {
-                return res.status(404).send({ status: false, message: "Data Not found with this book id, Please enter a valid book id" });
-            }
-
-            let userId = checkBookId.userId
-            
-            if (userId != loggedUserId) {
-                return res.status(403).send({ status: false, message: "Not authorized,please provide your own book id" });
-            }
+        console.log(req.decodedToken);
+        const tokenUser = req.decodedToken.id
+        const bookId = req.params.bookId
+        if (!isValid(bookId)) return res.status(400).json({
+            status: false,
+            message: "Invalid bookId"
+        })
+        // isDeleted added and checking fo the key is deleted or not------------------------------------
+        const book = await Book.findById(bookId).where('isDeleted').equals(false);
+        if (!book) {
+            return res.status(404).json({
+                status: false,
+                message: "No books found with this bookId"
+            })
+        }
+        const userId = book["userId"].toString()
+        if (userId != tokenUser) {
+            return res.status(403).json({
+                message: "You are not authorized"
+            })
         }
         next()
-    } catch (err) {
-        return res.status(500).send({ status: false, message: err.message });
+    } catch (error) {
+        return res.status(500).json({
+            status: false,
+            message: error.message
+        })
+
     }
 }

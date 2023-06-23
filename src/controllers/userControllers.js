@@ -2,21 +2,14 @@ import User from '../models/user.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {
-  isValid,
-  validString,
-  validateEmail,
-  isValidReqBody,
-  isValidPhoneNumber,
-  isValidPincode,
-  isValidPlace,
-  isValidISBN,
-  isValidPassword
+  isValidEmail,
+  isValidPassword,
 } from '../utils/index.js'
-
+import validator from "validator"
 
 export const register = async (req, res) => {
   try {
-    const {
+    let {
       title,
       name,
       phone,
@@ -25,15 +18,9 @@ export const register = async (req, res) => {
       address
     } = req.body
 
-    const reqData = req.body
+    let reqData = req.body
 
 
-    if (!isValidReqBody(reqData)) {
-      return res.status(400).json({
-        status: false,
-        message: "Please enter all the fields"
-      })
-    }
 
 
     if (!name || !phone || !email || !password || !title) return res.status(400).json({
@@ -41,46 +28,31 @@ export const register = async (req, res) => {
       message: 'Please enter all the mendatory fields'
     });
 
-    console.log(req.body)
 
-
-
-    if (!isValid(title) || !isValid(name) || !isValid(email) || !isValid(phone) || !isValid(password)) {
+    if (!validator.isEmail(email) || !isValidEmail(email)) {
       return res.status(400).json({
         status: false,
-        message: "Please Provide All valid Field"
+        message: "Invalid email"
       });
     }
 
-    if (!validString(title) || !validString(name)) {
+    if (!isValidPassword(password)) {
       return res.status(400).json({
         status: false,
-        message: 'Please enter a correct title and name validString error',
+        message: "Invalid password"
       });
     }
 
-    if (!["Mr", "Mrs", "Miss"].includes(title)) {
-      return res.status(400).json({
-        status: false,
-        message: "please use a valid title as Mr,Mrs,Miss"
-      });
+    if (password.trim().length < 8 || password.trim().length > 15) { 
+      return res.status(400).json({ status: false, message: "Invalid password ." });
     }
 
-
-
-    if (!isValidPhoneNumber(phone)) {
-      return res.status(400).json({
-        status: false,
-        message: 'Please enter a correct Mobile Number isValidPhone Number error',
-      });
+    req.body.phone = phone + ""
+    phone = phone + ""
+    if (!validator.isMobilePhone(phone, 'any')) {
+    return  res.status(400).json({ status: false, message: "Invalid mobile number" });
     }
-
-    if (!validateEmail(email)) {
-      return res.status(400).json({
-        status: false,
-        message: 'Please enter a correct email validEmail error',
-      });
-    }
+    
 
     const alreadyUser = await User.findOne({
       $or: [{
@@ -97,46 +69,6 @@ export const register = async (req, res) => {
       });
     }
 
-    if (!isValidPassword(password)) {
-      return res.status(400).json({
-        status: false,
-        message: 'Password must be 8 char long, combination of upper and lower case and must contain a special symbole.',
-      });
-    }
-
-    if (address) {
-
-      if (typeof address != "object") {
-        return res.status(400).send({
-          status: false,
-          message: "value of address must be in json format"
-        });
-      }
-
-      let {
-        street,
-        city,
-        pincode
-      } = address
-
-      city = String(city);
-      pincode = String(pincode);
-
-      if (!isValid(street) || !isValid(city) || !isValid(pincode)) {
-        return res.status(400).json({
-          status: false,
-          message: "Please Provide All valid street, city, pincode"
-        });
-      }
-
-      // if (!isValidPlace(street) || !isValidPlace(city) || !isValidPincode(pincode)) {
-      //   return res.status(400).send({
-      //     status: false,
-      //     message: "Please Provide All valid street, city, pincode down"
-      //   });
-      // }
-    }
-
 
     const hashPassword = await bcrypt.hash(password, 10);
 
@@ -148,7 +80,6 @@ export const register = async (req, res) => {
 
 
     const data = await User.create(userDetails);
-
 
     res.status(201).json({
       status: true,
@@ -182,18 +113,12 @@ export const login = async (req, res) => {
       });
     }
 
-    if (!isValidReqBody(req.body)) {
-      return res.status(400).json({
-        status: false,
-        message: 'Please enter all the fields.',
-      });
+    if (!validator.isEmail(email) || !isValidEmail(email)) {
+      return res.status(400).json({ status: false, message: "Invalid email" });
     }
-
-    if (!isValid(email) || !isValid(password)) {
-      return res.status(400).send({
-        status: false,
-        message: "email must be valid"
-      });
+    //password validator--------------------------------------------------------------------------------
+    if (!isValidPassword(password)) {
+      return res.status(400).json({ status: false, message: "Invalid password" });
     }
 
 
@@ -209,24 +134,28 @@ export const login = async (req, res) => {
       });
     }
 
-    const checkPass = await bcrypt.compare(password, user.password);
+    bcrypt.compare(password, user.password, function (err,passwordMatched){
+      if (err || !passwordMatched) {
+        return res.status(400).json({ status: false, message: 'Passwords do not match' });
+      }
 
-    if (!checkPass) {
-      return res.status(400).json({
-        status: false,
-        message: 'Invalid password.',
+      const token = jwt.sign({
+        id: user._id
+      }, process.env.JWT_SECRET, {
+        expiresIn: '3d',
       });
-    }
-
-    const token = jwt.sign({
-      userId: user._id.toString()
-    }, process.env.JWT_SECRET, {
-      expiresIn: '3d',
+  
+      res.setHeader("x-api-key", token);
+  
+      res.status(200).json({
+        status: true,
+        data: {
+          "token": token
+        }
+      });
     });
 
-    res.setHeader("x-api-key", token);
 
-    res.status(200).json({ status: true, data: { "token": token} });
   } catch (error) {
     res.status(500).json({
       status: false,

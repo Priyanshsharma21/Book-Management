@@ -1,107 +1,102 @@
 import Review from '../models/review.js'
 import Book from '../models/book.js'
-import mongoose from 'mongoose'
 import {
-    isValid,
-    validString,
-    validateEmail,
-    isValidReqBody,
-    isValidPhoneNumber,
-    isValidPincode,
-    isValidPlace,
-    isValidISBN,
-    isValidPassword
+    isValid 
 } from '../utils/index.js'
-const ObjectId = mongoose.Types.ObjectId;
+import validator from "validator";
+import moment from "moment";
+
+
 
 
 
 export const addReviewToBook = async (req, res) => {
     try {
-        let data = req.body;
-        const bookId = req.params.bookId;
-        let {
-            review,
+        const bookId = req.params.bookId
+        if (!bookId)
+            return res
+                .status(400)
+                .json({
+                    status: false,
+                    message: "bookId is required"
+                });
+        if (!isValid(bookId)) {
+            return res.status(400).json({
+                status: false,
+                message: "Invalid bookID, please enter a valid ID",
+            });
+        }
+        let findbook = await Book.findById(bookId);
+        if (!findbook) {
+            return res.status(400).json({
+                status: false,
+                message: "Book not found"
+            });
+        }
+        if (findbook.isDeleted) {
+            return res.status(400).json({
+                status: false,
+                message: "Book not found"
+            });
+        }
+
+        const {
+            reviewedBy,
+            reviewedAt,
             rating,
-            reviewedBy
-        } = data
+            value
+        } = req.body;
+        let data = req.body;
+        data.isDeleted = false;
+
+        if (!rating || rating <= 0 || rating >= 6) {
+            return res
+                .status(400)
+                .json({
+                    status: false,
+                    message: "invalid rating "
+                });
+        }
+        if (reviewedBy) {
+            if (reviewedBy.trim() === "") {
+                delete data.reviewedBy;
+            }
+
+        }
         data.bookId = bookId;
 
-        if (!bookId) {
-            return res.status(400).send({
-                status: false,
-                message: "please provide book id."
-            });
-        }
+        //updating reviews key count in book-----------------------------------------------------------------------
 
-        if (!ObjectId.isValid(bookId)) {
-            return res.status(400).send({
-                status: false,
-                message: "Invalid book id."
-            });
-        }
-
-        const checkBook = await Book.findOne({
-            _id: bookId,
-            isDeleted: false
-        });
-
-        if (!checkBook) {
-            return res.status(404).send({
-                status: false,
-                message: "Book id does not exist in database."
-            });
-        }
-
-        if (!rating || (!(rating <= 5 && rating >= 1))) {
-            return res.status(400).send({
-                status: false,
-                message: "please provide rating or rating is invalid. It must be 1 to 5."
-            });
-        }
-
-        if (!isValid(review)) {
-            return res.status(400).send({
-                status: false,
-                message: "review can't be empty."
-            });
-        }
-
-        if (!isValid(reviewedBy)) {
-            return res.status(400).send({
-                status: false,
-                message: "reviewer name is invalid."
-            });
-        }
-
-        const reviewData = await Review.create(data);
-
-        let result = {
-            _id: reviewData._id,
-            bookId: reviewData.bookId,
-            reviewedBy: reviewData.reviewedBy,
-            reviewedAt: reviewData.reviewedAt,
-            rating: reviewData.rating,
-            review: reviewData.review
-        }
-
-        await Book.findOneAndUpdate({
-            _id: bookId
-        }, {
-            $inc: {
-                reviews: 1
+        let updateReview = await Book.findByIdAndUpdate(
+            bookId, {
+                $inc: {
+                    reviews: 1
+                }
+            }, {
+                new: true
             }
-        });
-        return res.status(201).send({
+        );
+        // new true was not working because it was set inside $inc block now its working
+
+        data.reviewedAt = moment().format("YYYY-MM-DD  HH:mm:ss");
+        console.log(data)
+        const reviewss = await Review.create(data);
+        console.log(reviewss)
+        let finalData = {
+            book: updateReview,
+            reviewsData: reviewss
+        }
+
+        res.status(201).json({
             status: true,
-            message: "Success",
-            data: result
+            message: "success",
+            data: finalData
         });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: error.message
-        })
+        });
     }
 }
 
@@ -111,134 +106,134 @@ export const addReviewToBook = async (req, res) => {
 
 export const updateReviewOfBook = async (req, res) => {
     try {
-        let data = req.params;
-        let {
-            bookId,
-            reviewId
-        } = data;
-
-        let body = req.body;
-        let {
-            reviewedBy,
-            review,
-            rating
-        } = body;
-
-        if (!isValidReqBody(data)) {
-            return res.status(400).send({
-                status: false,
-                message: "Please give Field for Update"
-            });
-        }
-
-        if (!ObjectId.isValid(bookId) || !ObjectId.isValid(reviewId)) {
-            return res.status(400).send({
-                status: false,
-                message: "Invalid Book ID OR Invalid Review ID"
-            });
-        }
-
-        let checkExits = await Book.findOne({
-            _id: bookId,
-            isDeleted: false
-        })
-
-        if (!checkExits) {
-            return res.status(404).send({
-                status: false,
-                message: "This book ID is not exist or might be deleted."
-            });
-        }
-
-        let checkReview = await Review.findOne({
-            _id: reviewId,
-            isDeleted: false
-        })
-
-        if (!checkReview) {
-            return res.status(404).send({
-                status: false,
-                message: "This Review ID is not exist or might be deleted."
-            });
-        }
-
-        checkBookId = checkReview.bookId
-
-        if (checkBookId != bookId) {
-            return res.status(400).send({
-                status: false,
-                message: "Book ID not relevant to Review Id."
-            });
-        }
-
-        if (!reviewedBy && !review && !rating) {
-            return res.status(400).send({
-                status: false,
-                message: "At least one field is required."
-            });
-        }
-
-        let updateData = {};
-
-        if (reviewedBy) {
-            if (!isValid(reviewedBy)) {
-                return res.status(400).send({
+        let bookId = req.params.bookId;
+        let reviewId = req.params.reviewId;
+        //validating bookid and review id-----------------------------------------------------------------------
+        if (!isValid(bookId)) {
+            return res
+                .status(400)
+                .json({
                     status: false,
-                    message: "reviewedBy is not valid."
+                    message: "book id is invalid"
                 });
-            }
-
-            updateData.reviewedBy = reviewedBy;
         }
-
-        if (review) {
-            if (!isValid(review)) {
-                return res.status(400).send({
+        if (!isValid(reviewId)) {
+            return res
+                .status(400)
+                .json({
                     status: false,
-                    message: "review is not valid"
+                    message: "review id is invalid"
                 });
-            }
-            updateData.review = review;
         }
 
-        if (rating) {
+        //checking existence of bookId and review Id----------------------------------------------
+        let bookdata = await Book.findById(bookId)
+            .where("isDeleted")
+            .equals(false);
+        if (!bookdata)
+            return res
+                .status(404)
+                .json({
+                    staus: false,
+                    message: "This book does not exists"
+                });
+        // console.log(reviewId);
+        let reviewsData = await Review.findById(reviewId).where('isDeleted').equals(false);
 
-            if (!rating || (!(rating <= 5 && rating >= 1))) {
-                return res.status(400).send({
+
+        if (!reviewsData) {
+            return res
+                .status(404)
+                .json({
+                    staus: false,
+                    message: "This reviewId does not found"
+                });
+        }
+
+        //checking whether this book has reviewId or not-----------------------------------------------------
+        console.log(reviewsData, bookdata)
+        if (bookdata._id.toString() !== reviewsData.bookId.toString())
+            return res
+                .status(404)
+                .json({
+                    staus: false,
+                    message: "no reviewId found for this bookId"
+                });
+        //if this review Id is present in this book------------------------------------------------------
+        let data = req.body;
+        if (Object.keys(data).length == 0)
+            return res
+                .status(400)
+                .json({
+                    staus: false,
+                    message: "put json some data to update"
+                });
+
+        let object = {};
+        //checking rating key and rating should be 1-5----------------------------------------------------------------------
+        if (data.rating) {
+            if (typeof data.rating !== "number")
+                return res
+                    .status(400)
+                    .json({
+                        status: false,
+                        message: "rating should be Number"
+                    });
+            if (!(data.rating >= 0 && data.rating < 6)) {
+                return res
+                    .status(400)
+                    .json({
+                        status: false,
+                        message: "rating should be from 1 to 5"
+                    });
+            }
+            object.rating = data.rating;
+        }
+        //checking reviewBy key and also checking that it should have alphabets only--------------------
+        if (data.reviewedBy) {
+            if (!validator.isAlpha(data.reviewedBy, "en-US", {
+                    ignore: " "
+                }))
+                return res.status(400).json({
                     status: false,
-                    message: "rating is invalid. It must be 1 to 5."
+                    message: "It accepts only alphabets and there should not be any special characters numbers and spaces",
                 });
-            }
-
-            updateData.rating = rating
+            data.reviewedBy = data.reviewedBy.trim();
+            object.reviewedBy = data.reviewedBy;
         }
-
-        updateData.reviewedAt = Date.now();
-
-        let updateReview = await Review.findOneAndUpdate({
-                _id: reviewId,
-                isDeleted: false
-            },
-            updateData, {
-                new: true
+        //checking review--------------------------------------
+        if (data.review) {
+            if (data.review) {
+                if (!data.review.trim() == "") {
+                    object.review = data.review;
+                }
             }
-        ).select({
-            __v: 0,
-            createdAt: 0,
-            updatedAt: 0,
-            isDeleted: 0
+        }
+        if (Object.keys(object).length == 0)
+            return res
+                .status(500)
+                .json({
+                    status: false,
+                    message: "please provide something to update"
+                });
+
+        let update = await Review.findByIdAndUpdate(reviewId, object, {
+            new: true,
         });
+        bookdata.reviewsData = update;
 
-        return res.status(200).send({
-            status: true,
-            message: "Success",
-            data: updateReview
-        });
+        return res
+            .status(200)
+            .json({
+                status: true,
+                message: "success",
+                data: bookdata
+            });
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
-            message: error.message
-        })
+            error: error.message
+        });
     }
 }
 
@@ -250,75 +245,80 @@ export const updateReviewOfBook = async (req, res) => {
 
 export const deleteReviewOfBook = async (req, res) => {
     try {
-        let data = req.params;
-        let {
-            bookId,
-            reviewId
-        } = data;
-
-        if (!ObjectId.isValid(bookId) || !ObjectId.isValid(reviewId)) {
-            return res.status(400).send({
-                status: false,
-                message: "Invalid Book ID or Invalid Review ID"
-            });
+        let bookId = req.params.bookId;
+        let reviewId = req.params.reviewId;
+        //validating bookId and review Id----------------------------------------------------
+        if (!isValid(bookId)) {
+            return res
+                .status(400)
+                .json({
+                    status: false,
+                    message: "book id is invalid"
+                });
+        }
+        if (!isValid(reviewId)) {
+            return res
+                .status(400)
+                .json({
+                    status: false,
+                    message: "review id is invalid"
+                });
         }
 
-        let checkBookId = await Book.findOne({
-            _id: bookId,
-            isDeleted: false
-        });
-
-        if (!checkBookId) {
-            return res.status(404).send({
-                status: false,
-                message: "This book ID is not exist or might be deleted."
-            });
+        //checking the existence of bookId and review Id-----------------------------------
+        const book = await Book.findById(bookId)
+            .where("isDeleted")
+            .equals(false);
+        if (!book) {
+            return res
+                .status(404)
+                .json({
+                    status: false,
+                    message: "book id not found"
+                });
+        }
+        const review = await Review.findById(reviewId)
+            .where("isDeleted")
+            .equals(false);
+        if (!review) {
+            return res
+                .status(404)
+                .json({
+                    status: false,
+                    message: "review id not found"
+                });
         }
 
-        let checkReview = await Review.findOne({
-            _id: reviewId,
-            isDeleted: false
-        });
+        //finally deleting the review  ------------------------------------------------------
 
-        if (!checkReview) {
-            return res.status(404).send({
-                status: false,
-                message: "This Review ID is not exist or might be deleted."
-            });
-        }
-
-        checkCompare = checkReview.bookId;
-
-        if (checkCompare != bookId) {
-            return res.status(400).send({
-                status: false,
-                message: "Book ID not relevant to Review Id."
-            });
-        }
-
-        await Review.findOneAndUpdate({
-            _id: reviewId,
-            isDeleted: false
-        }, {
-            isDeleted: true
-        });
-
-        await Book.findOneAndUpdate({
-            _id: bookId
-        }, {
-            $inc: {
-                reviews: -1
+        const deleteReview = await Review.findByIdAndUpdate(
+            reviewId, {
+                isDeleted: true
+            }, {
+                new: true
             }
-        }, );
+        );
+        let update = await Book.findByIdAndUpdate(
+            bookId, {
+                $inc: {
+                    reviews: -1
+                }
+            }, {
+                new: true
+            }
+        );
 
-        return res.status(200).send({
+        return res.status(200).json({
             status: true,
-            message: "Successfully Deleted."
+            message: "deleted successfully"
         });
+
+        //updating the review count --------------------------------------
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
-            message: error.message
-        })
+            error: error.message
+        });
     }
 }
