@@ -298,16 +298,9 @@ export const updateBookById = async (req, res) => {
                     });
             }
 
-            console.log(data.ISBN)
-            if (!checkISBN(data.ISBN)) {
-                return res
-                    .status(400)
-                    .json({
-                        status: false,
-                        message: `ISBN is Not valid.`
-                    });
-            }
         }
+
+
         // relleasedAt key-------------------------------------------------------------------
         if (data.releasedAt) {
             if (moment(data.releasedAt).format("YYYY-MM-DD") != data.releasedAt)
@@ -389,7 +382,7 @@ export const updateBookById = async (req, res) => {
 
 export const deleteBookById = async (req, res) => {
     try {
-        let bookId = req.params.bookId;
+        let {bookId} = req.params
         if (!bookId) {
             return res.status(400).json({
                 status: false,
@@ -409,7 +402,9 @@ export const deleteBookById = async (req, res) => {
         }, {
             isDeleted: true,
             DeletedAt: moment().format('YYYY-MM-DD HH:mm:ss')
-        });
+        })
+
+        
         if (!deletedbybookid)
             return res
                 .status(404)

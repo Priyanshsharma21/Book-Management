@@ -12,21 +12,26 @@ import moment from "moment";
 
 export const addReviewToBook = async (req, res) => {
     try {
-        const bookId = req.params.bookId
+        const {bookId} = req.params
+
         if (!bookId)
             return res
                 .status(400)
                 .json({
                     status: false,
                     message: "bookId is required"
-                });
+            })
+
         if (!isValid(bookId)) {
             return res.status(400).json({
                 status: false,
                 message: "Invalid bookID, please enter a valid ID",
             });
         }
-        let findbook = await Book.findById(bookId);
+
+
+        let findbook = await Book.findById(bookId)
+
         if (!findbook) {
             return res.status(400).json({
                 status: false,
@@ -47,7 +52,7 @@ export const addReviewToBook = async (req, res) => {
             value
         } = req.body;
         let data = req.body;
-        data.isDeleted = false;
+        data.isDeleted = false
 
         if (!rating || rating <= 0 || rating >= 6) {
             return res
@@ -79,9 +84,7 @@ export const addReviewToBook = async (req, res) => {
         // new true was not working because it was set inside $inc block now its working
 
         data.reviewedAt = moment().format("YYYY-MM-DD  HH:mm:ss");
-        console.log(data)
         const reviewss = await Review.create(data);
-        console.log(reviewss)
         let finalData = {
             book: updateReview,
             reviewsData: reviewss
@@ -220,7 +223,7 @@ export const updateReviewOfBook = async (req, res) => {
         let update = await Review.findByIdAndUpdate(reviewId, object, {
             new: true,
         });
-        bookdata.reviewsData = update;
+        bookdata.reviewsData = update
 
         return res
             .status(200)
