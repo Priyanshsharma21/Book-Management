@@ -132,7 +132,9 @@ export const updateReviewOfBook = async (req, res) => {
         //checking existence of bookId and review Id----------------------------------------------
         let bookdata = await Book.findById(bookId)
             .where("isDeleted")
-            .equals(false);
+            .equals(false)
+
+
         if (!bookdata)
             return res
                 .status(404)
@@ -154,7 +156,6 @@ export const updateReviewOfBook = async (req, res) => {
         }
 
         //checking whether this book has reviewId or not-----------------------------------------------------
-        console.log(reviewsData, bookdata)
         if (bookdata._id.toString() !== reviewsData.bookId.toString())
             return res
                 .status(404)
@@ -239,7 +240,6 @@ export const updateReviewOfBook = async (req, res) => {
         });
     }
 }
-
 
 
 

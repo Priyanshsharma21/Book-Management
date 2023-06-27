@@ -9,6 +9,35 @@ import validator from "validator"
 import {
     isValidObjectId
 } from "mongoose"
+import AWS from 'aws-sdk'
+
+
+
+let uploadFile= async (file) =>{
+    return new Promise( function(resolve, reject) {
+     let s3= new AWS.S3({apiVersion: '2006-03-01'}); 
+ 
+     var uploadParams= {
+         ACL: "public-read",
+         Bucket: "classroom-training-bucket", 
+         Key: "abc/" + file.originalname, 
+         Body: file.buffer
+     }
+ 
+ 
+     s3.upload( uploadParams, function (err, data ){
+         if(err) {
+             return reject({"error": err})
+         }
+         console.log(data)
+         console.log("file uploaded succesfully")
+         return resolve(data.Location)
+     })
+ 
+    })
+ }
+
+
 
 
 export const createBook = async (req, res) => {
@@ -23,6 +52,18 @@ export const createBook = async (req, res) => {
             
             releasedAt
         } = req.body;
+
+        const files = req.files
+
+
+        if(files && files.length>0){
+            let uploadedFileURL= await uploadFile( files[0] )
+            // res.status(201).send({msg: "file uploaded succesfully", data: uploadedFileURL})
+            req.body.bookCover = uploadedFileURL
+        }
+        else{
+            res.status(400).send({ msg: "No file found" })
+        }
 
         if (!title || !excerpt || !userId || !category || !subcategory || !ISBN) {
             return res

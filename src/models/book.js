@@ -47,6 +47,10 @@ const bookSchema = new Schema({
     type: Date,
     required: true
   },
+  bookCover: {
+    type: String,
+    required: true
+  }
   
 }, { timestamps: true });
 

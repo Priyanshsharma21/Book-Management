@@ -17,8 +17,6 @@ const startServer = async()=>{
         app.listen(PORT, ()=>{
             console.log(`Running Up The Hill At ${PORT}km/hr`)
         })
-
-
     } catch (error) {
         console.log(error)
     }

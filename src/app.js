@@ -4,6 +4,8 @@ import morgan from 'morgan'
 import userRoutes from '../src/routes/userRoutes.js'
 import bookRoutes from './routes/bookRoutes.js'
 import reviewRoutes from './routes/reviewRoutes.js'
+import multer from 'multer';
+
 
 const app = express()
 
@@ -16,6 +18,10 @@ app.use(cors())
 
 // logging middleware
 app.use(morgan("tiny"))
+ 
+
+// multer middleware
+app.use( multer().any())
 
 
 // testing route
