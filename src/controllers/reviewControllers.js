@@ -33,7 +33,7 @@ export const addReviewToBook = async (req, res) => {
         let findbook = await Book.findById(bookId)
 
         if (!findbook) {
-            return res.status(400).json({
+            return res.status(404).json({
                 status: false,
                 message: "Book not found"
             });
@@ -248,73 +248,75 @@ export const updateReviewOfBook = async (req, res) => {
 
 export const deleteReviewOfBook = async (req, res) => {
     try {
-        let bookId = req.params.bookId;
-        let reviewId = req.params.reviewId;
-        //validating bookId and review Id----------------------------------------------------
-        if (!isValid(bookId)) {
-            return res
-                .status(400)
-                .json({
-                    status: false,
-                    message: "book id is invalid"
-                });
-        }
-        if (!isValid(reviewId)) {
-            return res
-                .status(400)
-                .json({
-                    status: false,
-                    message: "review id is invalid"
-                });
-        }
-
-        //checking the existence of bookId and review Id-----------------------------------
-        const book = await Book.findById(bookId)
-            .where("isDeleted")
-            .equals(false);
-        if (!book) {
-            return res
-                .status(404)
-                .json({
-                    status: false,
-                    message: "book id not found"
-                });
-        }
-        const review = await Review.findById(reviewId)
-            .where("isDeleted")
-            .equals(false);
-        if (!review) {
-            return res
-                .status(404)
-                .json({
-                    status: false,
-                    message: "review id not found"
-                });
-        }
-
-        //finally deleting the review  ------------------------------------------------------
-
-        const deleteReview = await Review.findByIdAndUpdate(
-            reviewId, {
-                isDeleted: true
-            }, {
-                new: true
-            }
-        );
-        let update = await Book.findByIdAndUpdate(
-            bookId, {
-                $inc: {
-                    reviews: -1
-                }
-            }, {
-                new: true
-            }
-        );
-
+        // let bookId = req.params.bookId
+        // let reviewId = req.params.reviewId
+        console.log("Deleted")
         return res.status(200).json({
             status: true,
             message: "deleted successfully"
         });
+        // //validating bookId and review Id----------------------------------------------------
+        // if (!isValid(bookId)) {
+        //     return res
+        //         .status(400)
+        //         .json({
+        //             status: false,
+        //             message: "book id is invalid"
+        //         });
+        // }
+        // if (!isValid(reviewId)) {
+        //     return res
+        //         .status(400)
+        //         .json({
+        //             status: false,
+        //             message: "review id is invalid"
+        //         });
+        // }
+
+        // //checking the existence of bookId and review Id-----------------------------------
+        // const book = await Book.findById(bookId)
+        //     .where("isDeleted")
+        //     .equals(false);
+        // if (!book) {
+        //     return res
+        //         .status(404)
+        //         .json({
+        //             status: false,
+        //             message: "book id not found"
+        //         });
+        // }
+        // const review = await Review.findById(reviewId)
+        //     .where("isDeleted")
+        //     .equals(false);
+        // if (!review) {
+        //     return res
+        //         .status(404)
+        //         .json({
+        //             status: false,
+        //             message: "review id not found"
+        //         });
+        // }
+
+        // //finally deleting the review  ------------------------------------------------------
+
+        // const deleteReview = await Review.findByIdAndUpdate(
+        //     reviewId, {
+        //         isDeleted: true
+        //     }, {
+        //         new: true
+        //     }
+        // );
+        // let update = await Book.findByIdAndUpdate(
+        //     bookId, {
+        //         $inc: {
+        //             reviews: -1
+        //         }
+        //     }, {
+        //         new: true
+        //     }
+        // );
+
+      
 
         //updating the review count --------------------------------------
 

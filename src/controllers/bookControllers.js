@@ -145,7 +145,8 @@ export const getBookByQuery = async (req, res) => {
 
         let qry = {
             isDeleted: false
-        };
+        }
+
         if (userId) {
             if (!isValid(userId)) {
                 return res
@@ -163,7 +164,7 @@ export const getBookByQuery = async (req, res) => {
                         messsage: "please provide valid user Id"
                     });
             }
-            qry.userId = userId;
+            qry.userId = userId
         }
         if (category) {
             qry.category = category;
